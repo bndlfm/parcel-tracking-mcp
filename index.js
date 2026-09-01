@@ -38,10 +38,6 @@ async function getDelivery({ number, carrier }) {
 const server = new McpServer({
     name: "parcel",
     version: "1.1.5",
-    capabilities: {
-        resource: {},
-        tools: {},
-    },
 });
 server.tool("search-carrier", "Search carriers by name keyword (supports fuzzy typos)", {
     query: z.string().trim().min(1).describe("Keyword to search carrier names, case-insensitive (typos allowed)"),

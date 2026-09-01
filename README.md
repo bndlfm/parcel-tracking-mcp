@@ -23,7 +23,7 @@ Set the token in the environment used to launch the server:
 export PARCEL_17TRACK_API_TOKEN="your-17track-api-token"
 ```
 
-The token is never read from a repository or package file. Do not put it in `config.json` or commit it to Git.
+The token is never read from a repository or package file. Do not put it in `config.json` or commit it to Git. For development or constrained environments, `PARCEL_MCP_TIMEOUT_MS` can override the default 10-second request timeout.
 
 ## Installation and usage
 

@@ -1,6 +1,15 @@
 const TRACKER_API_BASE_URL = "https://api.17track.net/track/v2.2";
 const USER_AGENT = "parcel-mcp/1.1.5";
-export async function requestJson(endpoint, apiToken, body, timeoutMs = 10_000) {
+function requestTimeoutMs() {
+    const raw = process.env.PARCEL_MCP_TIMEOUT_MS;
+    if (raw === undefined)
+        return 10_000;
+    if (!/^\d+$/.test(raw) || Number(raw) < 1) {
+        throw new Error("PARCEL_MCP_TIMEOUT_MS must be a positive integer number of milliseconds");
+    }
+    return Number(raw);
+}
+export async function requestJson(endpoint, apiToken, body, timeoutMs = requestTimeoutMs()) {
     const response = await fetch(`${TRACKER_API_BASE_URL}${endpoint}`, {
         method: "POST",
         headers: {

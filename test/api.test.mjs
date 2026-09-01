@@ -6,6 +6,7 @@ const originalFetch = globalThis.fetch;
 
 test.afterEach(() => {
   globalThis.fetch = originalFetch;
+  delete process.env.PARCEL_MCP_TIMEOUT_MS;
 });
 
 test("requestJson rejects non-success HTTP responses", async () => {
@@ -31,6 +32,15 @@ test("requestJson rejects 17TRACK API errors", async () => {
   await assert.rejects(
     requestJson("/register", "token", [{ number: "ABC", carrier: 210 }]),
     /17TRACK API error \(401\): invalid token/,
+  );
+});
+
+test("requestJson rejects an invalid timeout configuration", async () => {
+  process.env.PARCEL_MCP_TIMEOUT_MS = "not-a-number";
+
+  await assert.rejects(
+    requestJson("/register", "token", [{ number: "ABC", carrier: 210 }]),
+    /PARCEL_MCP_TIMEOUT_MS must be a positive integer/,
   );
 });
 

@@ -1,5 +1,3 @@
-import Fuse from "fuse.js";
-
 export interface CarrierRow {
   key: string;
   name_en: string;
@@ -17,12 +15,6 @@ export function createCarrierIndex(rows: CarrierRow[]) {
     }
   }
 
-  const fuse = new Fuse(rows, {
-    keys: ["name_en", "name_cn", "name_hk"],
-    threshold: 0.4,
-    includeScore: true,
-  });
-
   return {
     resolve(input: number | string): number | undefined {
       if (typeof input === "number") {
@@ -39,12 +31,7 @@ export function createCarrierIndex(rows: CarrierRow[]) {
       }
 
       const exact = carrierNameToId.get(value.toLowerCase());
-      if (exact !== undefined) return exact;
-
-      const fuzzy = fuse.search(value).at(0);
-      return fuzzy && fuzzy.score !== undefined && fuzzy.score <= 0.25
-        ? Number(fuzzy.item.key)
-        : undefined;
+      return exact;
     },
 
     isValidId(id: number): boolean {

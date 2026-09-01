@@ -13,8 +13,8 @@ test("carrier index resolves numeric IDs and exact names", () => {
   assert.equal(carriers.resolve("FedEx"), 100001);
 });
 
-test("carrier index resolves close name matches", () => {
-  assert.equal(carriers.resolve("USPS"), 210);
+test("carrier index resolves names with surrounding whitespace and case differences", () => {
+  assert.equal(carriers.resolve(" usps "), 210);
 });
 
 test("carrier index rejects unknown carriers", () => {

@@ -50,10 +50,6 @@ async function getDelivery({ number, carrier }: Props) {
 const server = new McpServer({
   name: "parcel",
   version: "1.1.5",
-  capabilities: {
-    resource: {},
-    tools: {},
-  },
 });
 
 server.tool(

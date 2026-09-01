@@ -35,7 +35,7 @@
   "homepage": "https://github.com/bndlfm/parcel-tracking-mcp#readme",
   "description": "An MCP server for tracking parcels through the 17TRACK API.",
   "dependencies": {
-    "@modelcontextprotocol/sdk": "^1.15.1",
+    "@modelcontextprotocol/sdk": "1.30.0",
     "csv-parse": "^6.0.0",
     "dotenv": "^17.2.0",
     "fuse.js": "^7.1.0",
