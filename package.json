@@ -3,15 +3,19 @@
   "version": "1.1.5",
   "main": "index.js",
   "type": "module",
+  "engines": {
+    "node": ">=20"
+  },
   "bin": {
-    "parcel-mcp": "./index.mjs"
+    "parcel-mcp": "./index.js"
   },
   "scripts": {
-    "build": "tsc && chmod 755 index.js"
+    "build": "tsc && chmod 755 index.js",
+    "test": "npm run build && node --test test/*.test.mjs"
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/iamfiro/parcel-tracking-mcp.git"
+    "url": "git+https://github.com/bndlfm/parcel-tracking-mcp.git"
   },
   "keywords": [
     "mcp",
@@ -26,10 +30,10 @@
   },
   "license": "MIT",
   "bugs": {
-    "url": "https://github.com/iamfiro/parcel-tracking-mcp/issues"
+    "url": "https://github.com/bndlfm/parcel-tracking-mcp/issues"
   },
-  "homepage": "https://github.com/iamfiro/parcel-tracking-mcp#readme",
-  "description": "",
+  "homepage": "https://github.com/bndlfm/parcel-tracking-mcp#readme",
+  "description": "An MCP server for tracking parcels through the 17TRACK API.",
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.15.1",
     "csv-parse": "^6.0.0",
@@ -44,6 +48,10 @@
     "typescript": "^5.8.3"
   },
   "files": [
-    "./"
+    "index.js",
+    "config.js",
+    "carriers.csv",
+    "README.md",
+    "LICENSE"
   ]
 }

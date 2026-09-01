@@ -1,190 +1,104 @@
-# Parcel Tracking MCP Server
+# parcel-mcp
 
-A Model Context Protocol (MCP) server for tracking parcel deliveries using the 17track.net API.
+A Model Context Protocol (MCP) server for tracking parcel deliveries through the [17TRACK API](https://api.17track.net/).
 
 ## Features
 
-- Track parcel deliveries from various carriers
-- Automatic carrier detection
-- Support for manual carrier specification
-- Built with TypeScript and MCP SDK
+- Track parcels from supported carriers
+- Search the bundled carrier list with fuzzy matching
+- Accept numeric 17TRACK carrier IDs or carrier names
+- Stdio transport for MCP clients
 
-## Prerequisites
+## Requirements
 
-- Node.js (v16 or higher)
-- npm or yarn
-- 17track.net API token
-
-## Installation
-
-Install the package via npm:
-
-```bash
-npm install -g parcel-tracking-mcp-server
-```
-
-Or install locally:
-
-```bash
-npm install parcel-tracking-mcp-server
-```
+- Node.js 20 or newer
+- npm
+- A 17TRACK API token
 
 ## Configuration
 
-Create a `config.json` file in your working directory with your 17track.net API token:
+Set the token in the environment used to launch the server:
 
-```json
-{
-  "apiToken": "your-17track-api-token-here"
-}
-```
-
-**Note:** The server looks for `config.json` in the current working directory where you run the command.
-
-### Getting a 17track.net API Token
-
-1. Visit [17track.net](https://17track.net)
-2. Sign up for an account
-3. Navigate to the API section
-4. Generate your API token
-5. Add it to your `config.json` file
-
-## Usage
-
-### Running the Server
-
-If installed globally:
 ```bash
-parcel-tracking-mcp-server
+export PARCEL_17TRACK_API_TOKEN="your-17track-api-token"
 ```
 
-If installed locally:
+The token is never read from a repository or package file. Do not put it in `config.json` or commit it to Git.
+
+## Installation and usage
+
+Install globally:
+
 ```bash
-npx parcel-tracking-mcp-server
+npm install --global parcel-mcp
+parcel-mcp
 ```
 
-Or if you're using it as a dependency in your project:
+Or run it directly with `npx`:
+
 ```bash
-node node_modules/parcel-tracking-mcp-server/dist/index.js
+PARCEL_17TRACK_API_TOKEN="your-17track-api-token" npx parcel-mcp
 ```
 
-## MCP Client Configuration
+## MCP client configuration
 
-To use this server with MCP clients (like Claude Desktop), add it to your MCP configuration:
+For an MCP client such as Claude Desktop:
 
 ```json
 {
   "mcpServers": {
-    "parcel-tracking": {
+    "parcel": {
       "command": "npx",
-      "args": ["parcel-tracking-mcp-server"]
+      "args": ["parcel-mcp"],
+      "env": {
+        "PARCEL_17TRACK_API_TOKEN": "your-17track-api-token"
+      }
     }
   }
 }
 ```
 
-Or if installed globally:
+## Tools
 
-```json
-{
-  "mcpServers": {
-    "parcel-tracking": {
-      "command": "parcel-tracking-mcp-server"
-    }
-  }
-}
-```
+### `search-carrier`
 
-### Available Tools
+Search carrier names, including fuzzy matches.
 
-#### `tracking-delivery`
+- `query` — required search text
+- `limit` — optional integer from 1 to 50; defaults to 10
 
-Track a parcel delivery by providing a tracking number.
+The result includes the numeric carrier ID needed by 17TRACK.
 
-**Parameters:**
-- `number` (required): The tracking number of the parcel
-- `carrier` (optional): The carrier of the parcel (defaults to 'auto' for automatic detection)
+### `tracking-delivery`
 
-**Example:**
-```typescript
-// Track with automatic carrier detection
-await trackingDelivery({
-  number: "1234567890"
-});
+Track a parcel. An explicit carrier is required; silent carrier auto-detection is not used.
 
-// Track with specific carrier
-await trackingDelivery({
-  number: "1234567890",
-  carrier: "ups"
-});
-```
+- `number` — required tracking number
+- `carrier` — required numeric 17TRACK carrier ID or carrier name, such as `210` or `USPS`
 
-### Supported Carriers
-
-The server supports automatic carrier detection, but you can also specify carriers manually. Common carriers include:
-- UPS
-- FedEx
-- DHL
-- USPS
-- China Post
-- And many more (check 17track.net documentation for full list)
-
-## API Response Format
-
-The server returns tracking information in JSON format, including:
-- Tracking status
-- Delivery progress
-- Timestamps
-- Location updates
-- Carrier information
-
-## Error Handling
-
-The server includes comprehensive error handling:
-- API connection errors
-- Invalid tracking numbers
-- Missing configuration
-- Network timeouts
+Use `search-carrier` first when you only know the carrier name or need to find its 17TRACK ID.
 
 ## Development
 
-### Project Structure
-
-```
-├── index.ts          # Main server implementation
-├── config.json       # Configuration file (create this)
-├── package.json      # Dependencies and scripts
-└── README.md         # This file
+```bash
+npm ci
+npm test
+npm run build
+npm pack --dry-run
 ```
 
-### Dependencies
+The package contains only the compiled runtime, carrier data, README, license, and package metadata. Source and tests remain in the repository but are not published.
 
-- `@modelcontextprotocol/sdk` - MCP SDK for building servers
-- `zod` - Schema validation
-- `node-fetch` - HTTP requests (if needed for older Node.js versions)
+## API behavior
+
+The server checks HTTP failures and 17TRACK API-level errors, applies a bounded request timeout, and returns failed tracking operations as MCP tool errors. Successful responses preserve the upstream JSON payload.
 
 ## License
 
-MIT License
-
-## Contributing
-
-1. Fork the repository
-2. Create a feature branch
-3. Make your changes
-4. Submit a pull request
+MIT. See [LICENSE](LICENSE).
 
 ## Support
 
-For issues related to:
-- MCP protocol: Check the [MCP documentation](https://modelcontextprotocol.io)
-- 17track.net API: Visit [17track.net API docs](https://api.17track.net)
-- This implementation: Create an issue in the repository
-
-## Changelog
-
-### v1.0.0
-- Initial release
-- Basic parcel tracking functionality
-- Support for automatic and manual carrier detection
-- Error handling and logging
+- MCP protocol: <https://modelcontextprotocol.io>
+- 17TRACK API: <https://api.17track.net>
+- Project issues: <https://github.com/bndlfm/parcel-tracking-mcp/issues>

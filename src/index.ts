@@ -1,34 +1,22 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { z } from "zod";
-import { createRequire } from "module";
 import path from "path";
 import { fileURLToPath } from "url";
 import fs from "fs";
 import { parse as parseCsv } from "csv-parse/sync";
 import Fuse from "fuse.js";
+import { loadApiToken } from "./config.js";
+import { requestJson } from "./api.js";
+import { CarrierRow, createCarrierIndex } from "./carriers.js";
 
-const require = createRequire(import.meta.url);
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-
-const configPath = path.join(__dirname, "config.json");
-if (!fs.existsSync(configPath)) {
-  throw new Error(`Missing config.json next to ${__filename}`);
-}
-const { apiToken } = JSON.parse(fs.readFileSync(configPath, "utf-8"));
+const apiToken = loadApiToken();
 
 const carriersCsvPath = path.join(__dirname, "carriers.csv");
 if (!fs.existsSync(carriersCsvPath)) {
   throw new Error("carriers.csv not found - make sure you placed the file next to the script");
-}
-
-interface CarrierRow {
-  key: string;
-  name_en: string;
-  name_cn: string;
-  name_hk: string;
-  url: string;
 }
 
 const carrierRows: CarrierRow[] = parseCsv(fs.readFileSync(carriersCsvPath), {
@@ -38,18 +26,7 @@ const carrierRows: CarrierRow[] = parseCsv(fs.readFileSync(carriersCsvPath), {
   trim: true,
   relax_quotes: true,
 });
-
-type CarrierMap = Map<string, number>;
-const carrierNameToId: CarrierMap = new Map();
-for (const row of carrierRows) {
-  const id = Number(row.key);
-  const add = (name: string) => {
-    if (name) carrierNameToId.set(name.toLowerCase(), id);
-  };
-  add(row.name_en);
-  add(row.name_cn);
-  add(row.name_hk);
-}
+const carrierIndex = createCarrierIndex(carrierRows);
 
 const fuse = new Fuse(carrierRows, {
   keys: ["name_en", "name_cn", "name_hk"],
@@ -57,75 +34,22 @@ const fuse = new Fuse(carrierRows, {
   includeScore: true,
 });
 
-function resolveCarrierByName(name: string): number | undefined {
-  const exact = carrierNameToId.get(name.toLowerCase());
-  if (exact) return exact;
-  
-  const fuzzy = fuse.search(name).at(0);
-  if (fuzzy && fuzzy.score! <= 0.25) {
-    return Number((fuzzy.item as CarrierRow).key);
-  }
-  
-  return undefined;
-}
-
-function validateCarrierId(id: number): boolean {
-  return carrierRows.some(row => Number(row.key) === id);
-}
-
-const TRACKER_API_BASE_URL = "https://api.17track.net/track/v2.2";
-const USER_AGENT = "MCP-Clipboardy/1.2.0";
-
 interface Props {
   number: string;
-  carrier?: number;
+  carrier: number;
 }
 
 async function register({ number, carrier }: Props) {
-  const body = [
-    {
-      number,
-      carrier: carrier ?? 0,
-    },
-  ];
-
-  const res = await fetch(`${TRACKER_API_BASE_URL}/register`, {
-    method: "POST",
-    headers: {
-      "17token": apiToken,
-      "Content-Type": "application/json",
-      "User-Agent": USER_AGENT,
-    },
-    body: JSON.stringify(body),
-  });
-
-  return res.json();
+  return requestJson("/register", apiToken, [{ number, carrier: carrier ?? 0 }]);
 }
 
 async function getDelivery({ number, carrier }: Props) {
-  const body = [
-    {
-      number,
-      carrier: carrier ?? 0,
-    },
-  ];
-
-  const res = await fetch(`${TRACKER_API_BASE_URL}/gettrackinfo`, {
-    method: "POST",
-    headers: {
-      "17token": apiToken,
-      "Content-Type": "application/json",
-      "User-Agent": USER_AGENT,
-    },
-    body: JSON.stringify(body),
-  });
-
-  return res.json();
+  return requestJson("/gettrackinfo", apiToken, [{ number, carrier: carrier ?? 0 }]);
 }
 
 const server = new McpServer({
   name: "parcel",
-  version: "1.2.0",
+  version: "1.1.5",
   capabilities: {
     resource: {},
     tools: {},
@@ -136,8 +60,8 @@ server.tool(
   "search-carrier",
   "Search carriers by name keyword (supports fuzzy typos)",
   {
-    query: z.string().describe("Keyword to search carrier names, case-insensitive (typos allowed)"),
-    limit: z.number().optional().describe("Max number of results to return (default 10)"),
+    query: z.string().trim().min(1).describe("Keyword to search carrier names, case-insensitive (typos allowed)"),
+    limit: z.number().int().min(1).max(50).optional().describe("Max number of results to return (default 10)"),
   },
   ({ query, limit = 10 }) => {
     const keyword = query.toLowerCase();
@@ -169,41 +93,28 @@ server.tool(
   "tracking-delivery",
   "Track a parcel delivery via 17TRACK",
   {
-    number: z.string().describe("The tracking number of the parcel"),
+    number: z.string().trim().min(1).describe("The tracking number of the parcel"),
     carrier: z
-      .number()
-      .optional()
-      .describe(
-        "Carrier ID (number). If omitted, 17TRACK will auto-detect, but accuracy may be lower."
-      ),
+      .union([z.number().int(), z.string().trim().min(1)])
+      .describe("17TRACK carrier ID or carrier name; use search-carrier to find an ID"),
   },
   async ({ number, carrier }) => {
-    if (carrier && !validateCarrierId(carrier)) {
+    const carrierId = carrierIndex.resolve(carrier);
+    if (carrierId === undefined) {
       return {
+        isError: true,
         content: [
           {
             type: "text",
-            text: `The carrier ID "${carrier}" is not valid. Please use the 'search-carrier' tool to find the correct carrier ID.`,
-          } as const,
-        ],
-      };
-    }
-
-    if (!carrier) {
-      return {
-        content: [
-          {
-            type: "text",
-            text:
-              "Please specify the carrier ID along with the tracking number for more accurate results. You can use the 'search-carrier' tool to look up the carrier ID first.",
+            text: `The carrier "${carrier}" is not valid. Please use the 'search-carrier' tool to find the correct carrier.`,
           } as const,
         ],
       };
     }
 
     try {
-      await register({ number, carrier });
-      const data = await getDelivery({ number, carrier });
+      await register({ number, carrier: carrierId });
+      const data = await getDelivery({ number, carrier: carrierId });
       return {
         content: [
           {
@@ -214,6 +125,7 @@ server.tool(
       };
     } catch (error) {
       return {
+        isError: true,
         content: [
           {
             type: "text",
