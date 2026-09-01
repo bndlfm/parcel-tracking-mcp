@@ -5,7 +5,6 @@ import path from "path";
 import { fileURLToPath } from "url";
 import fs from "fs";
 import { parse as parseCsv } from "csv-parse/sync";
-import Fuse from "fuse.js";
 import { loadApiToken } from "./config.js";
 import { requestJson } from "./api.js";
 import { CarrierRow, createCarrierIndex } from "./carriers.js";
@@ -28,23 +27,17 @@ const carrierRows: CarrierRow[] = parseCsv(fs.readFileSync(carriersCsvPath), {
 });
 const carrierIndex = createCarrierIndex(carrierRows);
 
-const fuse = new Fuse(carrierRows, {
-  keys: ["name_en", "name_cn", "name_hk"],
-  threshold: 0.4,
-  includeScore: true,
-});
-
 interface Props {
   number: string;
   carrier: number;
 }
 
 async function register({ number, carrier }: Props) {
-  return requestJson("/register", apiToken, [{ number, carrier: carrier ?? 0 }]);
+  return requestJson("/register", apiToken, [{ number, carrier }]);
 }
 
 async function getDelivery({ number, carrier }: Props) {
-  return requestJson("/gettrackinfo", apiToken, [{ number, carrier: carrier ?? 0 }]);
+  return requestJson("/gettrackinfo", apiToken, [{ number, carrier }]);
 }
 
 const server = new McpServer({
@@ -60,19 +53,7 @@ server.tool(
     limit: z.number().int().min(1).max(50).optional().describe("Max number of results to return (default 10)"),
   },
   ({ query, limit = 10 }) => {
-    const keyword = query.toLowerCase();
-    let exactMatches = carrierRows.filter(
-      (row) =>
-        row.name_en.toLowerCase().includes(keyword) ||
-        row.name_cn.toLowerCase().includes(keyword) ||
-        row.name_hk.toLowerCase().includes(keyword)
-    );
-
-    if (exactMatches.length === 0) {
-      exactMatches = fuse.search(keyword).map((m) => m.item as CarrierRow);
-    }
-
-    const results = exactMatches.slice(0, limit).map((row) => ({ id: Number(row.key), name: row.name_en }));
+    const results = carrierIndex.search(query, limit);
 
     return {
       content: [

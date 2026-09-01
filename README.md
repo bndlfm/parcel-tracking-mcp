@@ -23,7 +23,7 @@ Set the token in the environment used to launch the server:
 export PARCEL_17TRACK_API_TOKEN="your-17track-api-token"
 ```
 
-The token is never read from a repository or package file. Do not put it in `config.json` or commit it to Git. For development or constrained environments, `PARCEL_MCP_TIMEOUT_MS` can override the default 10-second request timeout.
+The token is never read from a repository or package file. Do not put it in `config.json` or commit it to Git. For development or constrained environments, `PARCEL_MCP_TIMEOUT_MS` can override the default 10-second request timeout; it must be a positive integer no greater than 300000.
 
 ## Installation and usage
 
@@ -74,7 +74,7 @@ The result includes the numeric carrier ID needed by 17TRACK.
 Track a parcel. An explicit carrier is required; silent carrier auto-detection is not used.
 
 - `number` — required tracking number
-- `carrier` — required numeric 17TRACK carrier ID or carrier name, such as `210` or `USPS`
+- `carrier` — required numeric 17TRACK carrier ID or carrier name, such as `21051` or `USPS`
 
 Use `search-carrier` first when you only know the carrier name or need to find its 17TRACK ID.
 
@@ -82,11 +82,12 @@ Use `search-carrier` first when you only know the carrier name or need to find i
 
 ```bash
 npm ci
+npm run typecheck
 npm test
-npm run build
 npm pack --dry-run
 ```
 
+CI runs type checking, tests, package verification, and the production dependency audit on pushes and pull requests. See [SECURITY.md](SECURITY.md) for vulnerability reporting and [CHANGELOG.md](CHANGELOG.md) for release history.
 The package contains only the compiled runtime, carrier data, README, license, and package metadata. Source and tests remain in the repository but are not published.
 
 ## API behavior

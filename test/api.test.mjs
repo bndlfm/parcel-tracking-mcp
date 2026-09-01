@@ -40,7 +40,34 @@ test("requestJson rejects an invalid timeout configuration", async () => {
 
   await assert.rejects(
     requestJson("/register", "token", [{ number: "ABC", carrier: 210 }]),
-    /PARCEL_MCP_TIMEOUT_MS must be a positive integer/,
+    /PARCEL_MCP_TIMEOUT_MS must be a positive integer no greater than 300000/,
+  );
+});
+
+test("requestJson rejects an oversized timeout configuration", async () => {
+  process.env.PARCEL_MCP_TIMEOUT_MS = "300001";
+
+  await assert.rejects(
+    requestJson("/register", "token", [{ number: "ABC", carrier: 210 }]),
+    /no greater than 300000/,
+  );
+});
+
+test("requestJson rejects an empty successful response", async () => {
+  globalThis.fetch = async () => new Response(null, { status: 204 });
+
+  await assert.rejects(
+    requestJson("/register", "token", [{ number: "ABC", carrier: 210 }]),
+    /empty response/i,
+  );
+});
+
+test("requestJson reports invalid JSON from an error response", async () => {
+  globalThis.fetch = async () => new Response("upstream unavailable", { status: 503 });
+
+  await assert.rejects(
+    requestJson("/register", "token", [{ number: "ABC", carrier: 210 }]),
+    /invalid JSON.*503/i,
   );
 });
 

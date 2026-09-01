@@ -5,7 +5,6 @@ import path from "path";
 import { fileURLToPath } from "url";
 import fs from "fs";
 import { parse as parseCsv } from "csv-parse/sync";
-import Fuse from "fuse.js";
 import { loadApiToken } from "./config.js";
 import { requestJson } from "./api.js";
 import { createCarrierIndex } from "./carriers.js";
@@ -24,16 +23,11 @@ const carrierRows = parseCsv(fs.readFileSync(carriersCsvPath), {
     relax_quotes: true,
 });
 const carrierIndex = createCarrierIndex(carrierRows);
-const fuse = new Fuse(carrierRows, {
-    keys: ["name_en", "name_cn", "name_hk"],
-    threshold: 0.4,
-    includeScore: true,
-});
 async function register({ number, carrier }) {
-    return requestJson("/register", apiToken, [{ number, carrier: carrier ?? 0 }]);
+    return requestJson("/register", apiToken, [{ number, carrier }]);
 }
 async function getDelivery({ number, carrier }) {
-    return requestJson("/gettrackinfo", apiToken, [{ number, carrier: carrier ?? 0 }]);
+    return requestJson("/gettrackinfo", apiToken, [{ number, carrier }]);
 }
 const server = new McpServer({
     name: "parcel",
@@ -43,14 +37,7 @@ server.tool("search-carrier", "Search carriers by name keyword (supports fuzzy t
     query: z.string().trim().min(1).describe("Keyword to search carrier names, case-insensitive (typos allowed)"),
     limit: z.number().int().min(1).max(50).optional().describe("Max number of results to return (default 10)"),
 }, ({ query, limit = 10 }) => {
-    const keyword = query.toLowerCase();
-    let exactMatches = carrierRows.filter((row) => row.name_en.toLowerCase().includes(keyword) ||
-        row.name_cn.toLowerCase().includes(keyword) ||
-        row.name_hk.toLowerCase().includes(keyword));
-    if (exactMatches.length === 0) {
-        exactMatches = fuse.search(keyword).map((m) => m.item);
-    }
-    const results = exactMatches.slice(0, limit).map((row) => ({ id: Number(row.key), name: row.name_en }));
+    const results = carrierIndex.search(query, limit);
     return {
         content: [
             {

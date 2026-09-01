@@ -82,6 +82,21 @@ test("MCP returns an error for an unknown carrier without calling the API", asyn
   }
 });
 
+test("MCP exposes carrier search through stdio", async () => {
+  const server = startServer("reject");
+  try {
+    await initialize(server);
+    const result = await server.request("tools/call", {
+      name: "search-carrier",
+      arguments: { query: " USPS " },
+    });
+    assert.equal(result.result.isError, undefined);
+    assert.deepEqual(JSON.parse(result.result.content[0].text), [{ id: 21051, name: "USPS" }]);
+  } finally {
+    server.child.kill();
+  }
+});
+
 test("MCP preserves successful API JSON for a carrier name", async () => {
   const server = startServer("success");
   try {

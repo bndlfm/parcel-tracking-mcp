@@ -1,11 +1,12 @@
 const TRACKER_API_BASE_URL = "https://api.17track.net/track/v2.2";
 const USER_AGENT = "parcel-mcp/1.1.5";
+const MAX_TIMEOUT_MS = 300_000;
 function requestTimeoutMs() {
     const raw = process.env.PARCEL_MCP_TIMEOUT_MS;
     if (raw === undefined)
         return 10_000;
-    if (!/^\d+$/.test(raw) || Number(raw) < 1) {
-        throw new Error("PARCEL_MCP_TIMEOUT_MS must be a positive integer number of milliseconds");
+    if (!/^\d+$/.test(raw) || Number(raw) < 1 || Number(raw) > MAX_TIMEOUT_MS) {
+        throw new Error(`PARCEL_MCP_TIMEOUT_MS must be a positive integer no greater than ${MAX_TIMEOUT_MS}`);
     }
     return Number(raw);
 }
@@ -33,6 +34,9 @@ export async function requestJson(endpoint, apiToken, body, timeoutMs = requestT
             ? String(payload.message)
             : responseText || response.statusText;
         throw new Error(`17TRACK request failed (${response.status}): ${message}`);
+    }
+    if (typeof payload === "undefined") {
+        throw new Error("17TRACK returned an empty response");
     }
     if (typeof payload === "object" &&
         payload !== null &&

@@ -1,4 +1,4 @@
-Status: open
+Status: done
 Created: 2026-09-01
 Updated: 2026-09-01
 Parent: ../specs/2026-09-01-hardening-and-client-contract.md
@@ -41,26 +41,26 @@ Implement the hardening and client-contract slice defined by the parent spec for
 - 2026-09-01: User selected and ratified the explicit-carrier contract.
 - 2026-09-01: Created branch `harden-boundaries`.
 - 2026-09-01: Added environment-token loading, explicit package allowlist, API request helper, carrier index, input validation, carrier-name support, and MCP error signaling.
+- 2026-09-01: Added API edge-case coverage, bounded timeout configuration, consolidated carrier search, typecheck script, CI, security policy, changelog, and corrected carrier fixtures/docs.
 
 ## Blockers
 
-None for this slice. Dependency upgrades remain a follow-up because the current audit reports five production findings.
+None.
 
 ## Evidence
 
-- `node --test test/config.test.mjs`: initially failed because `config.js` was absent; passed after implementation with 2 tests.
-- `node --test test/api.test.mjs`: initially failed because `api.js` was absent; passed after implementation with 3 tests.
-- `node --test test/carriers.test.mjs`: initially failed because `carriers.js` was absent; passed after implementation with 3 tests.
-- `npm test`: passed; 8 tests, 0 failures.
-- `node index.js` without `PARCEL_17TRACK_API_TOKEN`: exited 1 with a clear configuration error and no token disclosure.
+- `npm run typecheck`: passed.
+- `npm test`: passed; 24 tests, 0 failures.
+- `npm audit --omit=dev`: 0 vulnerabilities.
 - `npm pack --dry-run --json`: package contains only `LICENSE`, `README.md`, `carriers.csv`, `config.js`, `index.js`, and `package.json`.
 - `git diff --check`: passed.
-- `npm audit --omit=dev`: 5 findings remain (3 moderate, 2 high); no automatic upgrade was applied.
+- CI workflow content check: passed.
+- Offline MCP child-process tests verified normalized request numbers, carrier IDs, endpoints, headers, and both API calls without using a live token.
 
 ## Review
 
-Pending independent review after implementation.
+Final fresh-eyes review initially returned `CONCERNS` for an invalid README fixture, unbounded oversized timeout, weak outbound-request assertions, missing public carrier-search coverage, and inconsistent unit fixtures. All findings were fixed and reverified. Live 17TRACK behavior remains intentionally untested.
 
 ## Retrospective
 
-Pending.
+Review-driven corrections caught documentation and fixture drift that ordinary green tests missed. Public MCP tests now verify both observable results and outbound request semantics, while timeout configuration has an explicit safe upper bound.

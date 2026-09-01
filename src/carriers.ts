@@ -1,3 +1,5 @@
+import Fuse from "fuse.js";
+
 export interface CarrierRow {
   key: string;
   name_en: string;
@@ -15,7 +17,24 @@ export function createCarrierIndex(rows: CarrierRow[]) {
     }
   }
 
+  const fuse = new Fuse(rows, {
+    keys: ["name_en", "name_cn", "name_hk"],
+    threshold: 0.4,
+    includeScore: true,
+  });
+
   return {
+    search(query: string, limit = 10): Array<{ id: number; name: string }> {
+      const keyword = query.trim().toLowerCase();
+      const exactMatches = rows.filter((row) =>
+        [row.name_en, row.name_cn, row.name_hk].some((name) => name.toLowerCase().includes(keyword)),
+      );
+      const matches = exactMatches.length > 0
+        ? exactMatches
+        : fuse.search(keyword).map((match) => match.item);
+      return matches.slice(0, limit).map((row) => ({ id: Number(row.key), name: row.name_en }));
+    },
+
     resolve(input: number | string): number | undefined {
       if (typeof input === "number") {
         return Number.isInteger(input) && rows.some((row) => Number(row.key) === input)
